@@ -1,65 +1,101 @@
-# Jogo de Terminal em Go
+# Jogo com Elementos Concorrentes em Go
 
-Este projeto é um pequeno jogo desenvolvido em Go que roda no terminal usando a biblioteca [termbox-go](https://github.com/nsf/termbox-go). O jogador controla um personagem que pode se mover por um mapa carregado de um arquivo de texto.
+Este projeto implementa um jogo de terminal em Go com elementos concorrentes que interagem entre si através de goroutines e canais de comunicação.
 
-## Como funciona
+## Compilação e Execução
 
-- O mapa é carregado de um arquivo `.txt` contendo caracteres que representam diferentes elementos do jogo.
-- O personagem se move com as teclas **W**, **A**, **S**, **D**.
-- Pressione **E** para interagir com o ambiente.
-- Pressione **ESC** para sair do jogo.
+### Pré-requisitos
+- Go 1.16 ou superior
+- Biblioteca termbox-go (`github.com/nsf/termbox-go`)
 
-### Controles
-
-| Tecla | Ação              |
-|-------|-------------------|
-| W     | Mover para cima   |
-| A     | Mover para esquerda |
-| S     | Mover para baixo  |
-| D     | Mover para direita |
-| E     | Interagir         |
-| ESC   | Sair do jogo      |
-
-## Como compilar
-
-1. Instale o Go e clone este repositório.
-2. Inicialize um novo módulo "jogo":
-
+### Instalação
+1. Clone o repositório
+2. Instale a dependência necessária:
 ```bash
-go mod init jogo
-go get -u github.com/nsf/termbox-go
+go get github.com/nsf/termbox-go
 ```
 
-3. Compile o programa:
-
-Linux:
-
-```bash
-go build -o jogo
-```
-
-Windows:
-
+### Compilação
+Para compilar o jogo, execute no terminal:
 ```bash
 go build -o jogo.exe
 ```
 
-Também é possivel compilar o projeto usando o comando `make` no Linux ou o script `build.bat` no Windows.
-
-## Como executar
-
-1. Certifique-se de ter o arquivo `mapa.txt` com um mapa válido.
-2. Execute o programa no termimal:
-
+### Execução
+Para executar o jogo:
 ```bash
-./jogo
+./jogo.exe
+```
+ou especifique um mapa personalizado:
+```bash
+./jogo.exe mapa.txt
 ```
 
-## Estrutura do projeto
+## Controles
+- WASD: Movimentação do personagem
+- E: Ativar portal mágico
+- ESC: Sair do jogo
 
-- main.go — Ponto de entrada e loop principal
-- interface.go — Entrada, saída e renderização com termbox
-- jogo.go — Estruturas e lógica do estado do jogo
-- personagem.go — Ações do jogador
+## Elementos Implementados
+
+### 1. Inimigo Patrulheiro (👾)
+- **Comportamento**: Patrulha o mapa de forma autônoma e persegue o jogador quando detectado
+- **Concorrência**: Executa em uma goroutine independente
+- **Comunicação**: Recebe sinais através do `canalAvistamento` quando o jogador está próximo
+- **Estados**:
+  - Modo Patrulha: Move-se aleatoriamente pelo mapa
+  - Modo Perseguição: Persegue o jogador por 2 segundos quando avistado
+- **Timeout**: Retorna ao modo patrulha após 2 segundos de perseguição
+- **Atualização**: A cada 500ms
+
+### 2. Portal Mágico (⭕)
+- **Comportamento**: Aparece em posições aleatórias quando ativado
+- **Concorrência**: Executa em uma goroutine independente
+- **Comunicação**: Ativado através do `canalPortal` quando o jogador pressiona 'E'
+- **Funcionalidade**: Teletransporta o jogador para uma posição aleatória do mapa
+- **Timeout**: Desaparece após 5 segundos de ativação
+- **Atualização**: Verifica ativação a cada 1 segundo
+
+### 3. Armadilha Explosiva (💣)
+- **Comportamento**: Aparece em posições aleatórias e é ativada quando o jogador pisa nela
+- **Concorrência**: Executa em uma goroutine independente
+- **Comunicação**: Ativada através do `canalArmadilha` quando o jogador colide
+- **Estados**: 
+  - Inativa: Invisível no mapa
+  - Ativa: Visível e causa dano ao jogador
+- **Timeout**: Desaparece após 3 segundos de ativação
+- **Atualização**: Verifica ativação a cada 1 segundo
+
+## Aspectos Técnicos
+
+### Concorrência
+- Cada elemento é executado em sua própria goroutine
+- Os elementos funcionam de forma independente da thread principal
+- Utilização de `select` para escuta concorrente de múltiplos canais
+
+### Comunicação
+- Canais sem buffer para comunicação síncrona
+- Uso de `struct{}` vazio para sinais entre elementos
+- Timeouts implementados com `time.Sleep`
+
+### Sincronização
+- Acesso ao mapa protegido pela função `jogoPodeMoverPara`
+- Comunicação entre elementos através de canais
+- Atualização da interface sincronizada com o loop principal
+
+## Estrutura do Código
+
+- `main.go`: Loop principal e inicialização do jogo
+- `elementos_concorrentes.go`: Implementação dos elementos concorrentes
+- `interface.go`: Interface gráfica usando termbox
+- `personagem.go`: Lógica de movimentação e interação do jogador
+
+## Melhorias Futuras
+
+1. Implementar sistema de pontuação
+2. Adicionar mais tipos de inimigos
+3. Criar power-ups e itens coletáveis
+4. Implementar níveis de dificuldade
+5. Adicionar efeitos sonoros
 
 

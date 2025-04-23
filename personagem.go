@@ -1,23 +1,48 @@
 // personagem.go - Funções para movimentação e ações do personagem
 package main
 
-import "fmt"
+import (
+	"math/rand"
+)
 
 // Atualiza a posição do personagem com base na tecla pressionada (WASD)
 func personagemMover(tecla rune, jogo *Jogo) {
 	dx, dy := 0, 0
 	switch tecla {
-	case 'w': dy = -1 // Move para cima
-	case 'a': dx = -1 // Move para a esquerda
-	case 's': dy = 1  // Move para baixo
-	case 'd': dx = 1  // Move para a direita
+	case 'w', 'W':
+		dy = -1
+	case 's', 'S':
+		dy = 1
+	case 'a', 'A':
+		dx = -1
+	case 'd', 'D':
+		dx = 1
 	}
 
-	nx, ny := jogo.PosX+dx, jogo.PosY+dy
-	// Verifica se o movimento é permitido e realiza a movimentação
-	if jogoPodeMoverPara(jogo, nx, ny) {
-		jogoMoverElemento(jogo, jogo.PosX, jogo.PosY, dx, dy)
-		jogo.PosX, jogo.PosY = nx, ny
+	// Verifica se pode mover
+	if jogoPodeMoverPara(jogo, jogo.PosX+dx, jogo.PosY+dy) {
+		// Verifica se há elementos especiais na nova posição
+		novaPos := jogo.Mapa[jogo.PosY+dy][jogo.PosX+dx]
+		if novaPos == PortalMagico {
+			// Teletransporta para posição aleatória
+			jogo.PosX = rand.Intn(len(jogo.Mapa[0]))
+			jogo.PosY = rand.Intn(len(jogo.Mapa))
+			jogo.StatusMsg = "Você foi teletransportado!"
+		} else if novaPos == ArmadilhaElem {
+			jogo.StatusMsg = "Você ativou uma armadilha!"
+			// Envia sinal para ativar a armadilha
+			canalArmadilha <- struct{}{}
+		} else {
+			// Move normalmente
+			jogoMoverElemento(jogo, jogo.PosX, jogo.PosY, dx, dy)
+			jogo.PosX += dx
+			jogo.PosY += dy
+		}
+	}
+
+	// Verifica se o patroller está próximo
+	if abs(jogo.PosX-5) <= 3 && abs(jogo.PosY-5) <= 3 {
+		canalAvistamento <- struct{}{}
 	}
 }
 
@@ -25,22 +50,28 @@ func personagemMover(tecla rune, jogo *Jogo) {
 // Neste exemplo, apenas exibe uma mensagem de status
 // Você pode expandir essa função para incluir lógica de interação com objetos
 func personagemInteragir(jogo *Jogo) {
-	// Atualmente apenas exibe uma mensagem de status
-	jogo.StatusMsg = fmt.Sprintf("Interagindo em (%d, %d)", jogo.PosX, jogo.PosY)
+	// Ativa o portal mágico
+	canalPortal <- struct{}{}
+	jogo.StatusMsg = "Portal mágico ativado!"
 }
 
 // Processa o evento do teclado e executa a ação correspondente
-func personagemExecutarAcao(ev EventoTeclado, jogo *Jogo) bool {
-	switch ev.Tipo {
+func personagemExecutarAcao(evento EventoTeclado, jogo *Jogo) bool {
+	switch evento.Tipo {
 	case "sair":
-		// Retorna false para indicar que o jogo deve terminar
 		return false
 	case "interagir":
-		// Executa a ação de interação
 		personagemInteragir(jogo)
 	case "mover":
-		// Move o personagem com base na tecla
-		personagemMover(ev.Tecla, jogo)
+		personagemMover(evento.Tecla, jogo)
 	}
-	return true // Continua o jogo
+	return true
+}
+
+// Função auxiliar para valor absoluto
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

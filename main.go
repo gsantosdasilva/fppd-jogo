@@ -20,6 +20,9 @@ func main() {
 		panic(err)
 	}
 
+	// Inicializa os elementos concorrentes
+	iniciarElementosConcorrentes(&jogo)
+
 	// Desenha o estado inicial do jogo
 	interfaceDesenharJogo(&jogo)
 
